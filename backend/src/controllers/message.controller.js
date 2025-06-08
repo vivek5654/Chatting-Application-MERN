@@ -27,8 +27,8 @@ export const getMessage = async (req, res) => {
 
     const messages = await Message.find({
       $or: [
-        { senderId, reciverId: userToChat }, // ✅ fixed field name
-        { senderId: userToChat, reciverId: senderId }, // ✅ fixed
+        { senderId, reciverId: userToChat },
+        { senderId: userToChat, reciverId: senderId },
       ],
     }).sort({ createdAt: 1 });
 
@@ -57,19 +57,25 @@ export const sendMessage = async (req, res) => {
     const newMessage = new Message({
       senderId,
       reciverId,
-      text, // ✅ corrected
+      text,
       image: imageurl,
     });
 
     await newMessage.save();
 
-
+    // Get receiver's socket ID
     const receiverSocketId = getReceiverSocketId(reciverId);
-    if(receiverSocketId){
+    
+    // Emit to receiver if online
+    if (receiverSocketId) {
       io.to(receiverSocketId).emit("newMessage", newMessage);
     }
 
-
+    // Also emit to sender to ensure real-time update
+    const senderSocketId = getReceiverSocketId(senderId);
+    if (senderSocketId) {
+      io.to(senderSocketId).emit("newMessage", newMessage);
+    }
 
     res.status(200).json(newMessage);
   } catch (error) {

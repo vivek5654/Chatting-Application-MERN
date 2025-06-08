@@ -20,13 +20,15 @@ const ChatConainerComponent = () => {
   }, [messages]);
 
   useEffect(() => {
-    getMessages(selectedUser._id);
-    subscribeToMessage();
+    if (selectedUser?._id) {
+      getMessages(selectedUser._id);
+      subscribeToMessage();
+    }
 
     return () => {
       unsubscribeFromMessage();
     }
-  }, [selectedUser?._id, getMessages]);
+  }, [selectedUser?._id, getMessages, subscribeToMessage, unsubscribeFromMessage]);
 
   if (isMessageLoading) {
     return (

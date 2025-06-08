@@ -3,7 +3,8 @@ import { axiosInstance } from "../lib/axios.js";
 import toast from "react-hot-toast";
 import { io } from "socket.io-client";
 
-const BASE_URL = import.meta.env.MODE === "production" ? "http://localhost:5000" : "/";
+const BASE_URL = import.meta.env.MODE === "production" ? "http://localhost:5000" : "http://localhost:5000";
+
 export const useAuthStore = create((set, get) => ({
   authUser: null,
   isSigningUp: false,
@@ -47,16 +48,15 @@ signup: async (data) => {
 },
 
 logout: async () => {
-  set({isLoggingIn: true});
-      try{
-        await axiosInstance.post('auth/logout');
-        set({authUser: null});
-        toast.success("Account logged out successfully");
-        get().disconnectSocket();
-      }catch(error) {
-        toast.error(error.response.data.message);
-
-      }
+  set({ isLoggingIn: false });
+  try {
+    await axiosInstance.post('auth/logout');
+    set({ authUser: null, onlineUsers: [] });
+    get().disconnectSocket();
+    toast.success("Account logged out successfully");
+  } catch(error) {
+    toast.error(error.response?.data?.message || "Failed to logout");
+  }
 },
 
 login: async (data) => {
@@ -91,25 +91,39 @@ updateProfile: async(data) => {
 
 connectSocket: () => {
   const {authUser} = get()
-  if(!authUser || get().socket?.connected) return;
+  if(!authUser) return;
 
+  // Disconnect existing socket if any
+  if (get().socket?.connected) {
+    get().socket.disconnect();
+  }
 
   const socket = io(BASE_URL, {
     query: {
       userId: authUser._id,
-      
     },
+    withCredentials: true,
   }) 
   socket.connect()
-  set({socket: socket});
+  socket.on("connect", () => {
+    console.log("Socket connected:", socket.id);
+  });
   socket.on("getOnlineUsers", (userIds) => {
+    console.log("Online users:", userIds);
     set({onlineUsers: userIds})
   });
+  socket.on("disconnect", () => {
+    console.log("Socket disconnected");
+  });
 
-
+  set({socket: socket});
 },
 disconnectSocket: () => {
-  if(get().socket?.connected) get().socket.disconnect();
+  const socket = get().socket;
+  if (socket?.connected) {
+    socket.disconnect();
+    set({ socket: null, onlineUsers: [] });
+  }
 },
 
 }));

@@ -12,6 +12,7 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "openssl": "^2.0.0",
     "terser": "^5.41.0"
   }
 }

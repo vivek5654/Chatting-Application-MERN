@@ -1,9 +1,7 @@
 import { create } from 'zustand'
 import toast from 'react-hot-toast'
 import { axiosInstance } from '../lib/axios'
-import { Socket } from 'socket.io-client';
 import { useAuthStore } from './useAuthStore';
-
 
 export const useChatStore = create((set, get) => ({
     messages: [],               
@@ -34,7 +32,6 @@ export const useChatStore = create((set, get) => ({
         set({ isMessageLoading: true, messages: [] });
         try {
             const res = await axiosInstance.get(`messages/${userId}`);
-            // Sort messages by createdAt
             const sortedMessages = res.data.sort((a, b) => 
                 new Date(a.createdAt) - new Date(b.createdAt)
             );
@@ -52,7 +49,6 @@ export const useChatStore = create((set, get) => ({
 
         try {
             const res = await axiosInstance.post(`/messages/send/${selectedUser._id}`, messageData);
-            // Add new message to the end of the array
             set({ messages: [...messages, res.data] });
         } catch (error) {
             toast.error(error.response?.data?.message || "Failed to send message");
@@ -61,25 +57,39 @@ export const useChatStore = create((set, get) => ({
     },
     
     subscribeToMessage: () => {
-        const {selectedUser} = get();
-        if(!selectedUser) return;
         const socket = useAuthStore.getState().socket;
-        if(!socket) return;
+        if (!socket) {
+            console.log("No socket connection available");
+            return;
+        }
+
+        // Remove existing listeners
+        socket.off("newMessage");
         
         socket.on("newMessage", (newMessage) => {
-            const {messages} = get();
-            // Only add message if it's from the selected user or sent by current user
-            if(newMessage.senderId === selectedUser._id || newMessage.reciverId === selectedUser._id) {
-                set({
-                    messages: [...messages, newMessage]
-                });
+            console.log("Received new message:", newMessage);
+            const { messages, selectedUser } = get();
+            const { authUser } = useAuthStore.getState();
+
+            // Check if message is for current chat
+            if (
+                (newMessage.senderId === selectedUser?._id && newMessage.reciverId === authUser._id) ||
+                (newMessage.senderId === authUser._id && newMessage.reciverId === selectedUser?._id)
+            ) {
+                // Check for duplicates
+                const messageExists = messages.some(msg => msg._id === newMessage._id);
+                if (!messageExists) {
+                    console.log("Adding new message to chat");
+                    set({ messages: [...messages, newMessage] });
+                }
             }
         });
     },
 
     unsubscribeFromMessage: () => {
         const socket = useAuthStore.getState().socket;
-        if(!socket) return;
-        socket.off("newMessage");
+        if (socket) {
+            socket.off("newMessage");
+        }
     },
-    }));
+}));

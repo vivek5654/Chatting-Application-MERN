@@ -16,6 +16,9 @@ const Sidebar = () => {
     return <Sidebarskeleton />;
   }
 
+  // Ensure users is an array before mapping
+  const usersList = Array.isArray(users) ? users : [];
+
   return (
     <aside className="h-full w-20 lg:w-72 border-r border-base-300 flex flex-col transition-all duration-200">
       <div className="border-b border-base-300 w-full p-5">
@@ -26,8 +29,8 @@ const Sidebar = () => {
       </div>
 
       <div className="overflow-y-auto w-full py-3">
-        {users.length > 0 ? (
-          users.map((user) => (
+        {usersList.length > 0 ? (
+          usersList.map((user) => (
             <button
               key={user._id}
               onClick={() => useChatStore.setState({ selectedUser: user })}
@@ -43,14 +46,18 @@ const Sidebar = () => {
                   alt={user.fullName}
                   className="size-12 object-cover rounded-full"
                 />
+                {/* Online indicator dot */}
+                <div 
+                  className={`absolute bottom-0 right-0 size-3 rounded-full border-2 border-base-100 
+                    ${onlineUsers?.includes(user._id) ? 'bg-green-500' : 'bg-gray-400'}`}
+                />
               </div>
 
               {/* User info - only visible on larger screens */}
               <div className="hidden lg:block text-left min-w-0">
                 <div className="font-medium truncate">{user.fullName}</div>
-                <div className="text-sm text-zinc-400 flex items-center gap-2">
-                  <div className={`size-2 rounded-full ${onlineUsers.includes(user._id) ? 'bg-green-500' : 'bg-gray-400'}`}></div>
-                  {onlineUsers.includes(user._id) ? "Online" : "Offline"}
+                <div className="text-sm text-zinc-400">
+                  {onlineUsers?.includes(user._id) ? "Online" : "Offline"}
                 </div>
               </div>
             </button>
